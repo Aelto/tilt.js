@@ -1,7 +1,6 @@
 # tilt.js
 a small and **simple** javascript library for building user interfaces
 
-<<<<<<< HEAD
 ## Example
 index.html
 ```html
@@ -70,66 +69,3 @@ virtual.render(state)
 It is the main function of tilt.js. It return a tilt.container object based on html nodes.
 
 todo...
-=======
-## examples
-
-### basics
-simple html elements without events
-```javascript
-new tilt.container('p')
-	.addChild(new tilt.tag('div.child child 1')
-	.addChild(new tilt.tag('div.child child 2')
-```
-is the same as
-```html
-<p>
-  <div class='child'>child 1</div>
-  <div class='child'>child 2</div>
-</p>
-```
-
-templates can also be used
-
-index.html
-```html
-<template id='tpl'>
-	<button var='button'>click me!</button>
-	<div class='container'>
-		<div>you clicked {{n}} times</div>
-	</div>
-</template>
-```
-
-script.js
-```javascript
-const obj = {}
-tilt.template('#tpl', obj) // returns a new tilt.container
-
-// you can now access to the <button> element
-obj.button // to get the tilt object
-obj.button.dom // to get the dom element
-```
-
-basics #2. 2 inputs type button, with real events and tilt event linked to them
-```javascript
-const state = {n: 0, y: 'click me...'}
-let $button, $div
-const $parent = new tilt.container('div')
-	.addChild($button = new tilt.tag('button {{y}}'))
-	.addChild($div = new tilt.tag('div you clicked {{n}} times'))
-
-$parent.appendAt(document.body)
-	.render(state)
-
-$button.addTilt('width', obj => obj.dom.style.width = 100 + state.n * 5 + 'px')
-$div.addTilt('width', true) // no need to write the function again
-
-$button.on('click', () => {
-	state.n++
-	tilt.event('width') // triggers the 'width' tilt event on both dom element $div and $button
-
-	if (state.n > 2) state.y = 'click again!'
-	$parent.render(state)
-})
-```
->>>>>>> origin/master
