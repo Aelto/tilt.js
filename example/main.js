@@ -1,37 +1,21 @@
+import { useState, h, render } from '/src/tilt.js'
+import htm from '/htm.js'
 
-const state = {n: 1}
+const html = htm.bind(h)
+const world = 'world'
+console.log(html`<div>hello ${world}</div>`)
 
-const virtual = tilt.handle('.test')
+function App () {
+  const [count, setCount] = useState(0)
 
+  return html`
+    <div id=app>
+      <button>➕</button>
+      <button>➖</button>
 
-const updateDom = ( inc ) => {
-    state.n += inc
-    virtual.render(state)
+      <p>${count}</p>
+    </div>
+  `
 }
 
-virtual.nodes.button.dom.addEventListener('click', e => {
-
-    if (virtual.nodes.input.dom.value === '') return
-
-    const newTodo = tilt.handle('#todo')
-                    .appendAt(virtual.nodes.container.dom)
-                    .render({content: virtual.nodes.input.dom.value})
-                    .on('click', e => newTodo.triggers('deleteTodo'))
-
-    virtual.nodes.container.addChild( newTodo )
-
-    virtual.nodes.input.dom.value = ''
-    virtual.nodes.input.dom.focus()
-
-    updateDom( 1 )
-
-})
-
-// the tilt event could have been replaced by a simple function here
-// it's just to show how it works
-tilt.on('deleteTodo', ( node, dom ) => {
-    node.deconstruct()
-    updateDom( -1 )
-})
-
-virtual.render(state)
+render(App(), document.body)
