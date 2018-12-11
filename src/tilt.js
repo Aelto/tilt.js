@@ -1,52 +1,78 @@
-
 class State {
   constructor (v) {
     this.value = v
+
+    this.onChanges = []
+  }
+
+  setValue (v) {
+    this.value = v
+
+    for (const onChange of this.onChanges) {
+      onChange()
+    }
   }
 }
 
 export function useState (value) {
   let state = new State(value)
 
-  return [state, (v) => state.value = v]
+  return [state, state.setValue.bind(state)]
 }
 
-export function render (vdom, parent = null) {
-  if (typeof vdom === 'string') {
-    return vdom
-  }
-
-  if (vdom instanceof State) {
-    return vdom.value
-  }
-
-  const { nodeName, key, children, attributes } = vdom
-
-  const node = document.createElement(nodeName)
-
-  const childrenNodes = []
-  if (children) {
-    for (const child of children) {
-      const childNode = render(child)
-  
-      childrenNodes.push(childNode)
+export function render(hNode) {
+  if (typeof hNode === 'string' || typeof hNode === 'number') {
+    if (String(hNode).trim().length) {
+      return document.createTextNode(hNode)
+    }
+    else {
+      return undefined
     }
   }
+  else if (hNode instanceof State) {
+    let node = render(hNode.value)
 
-  if (attributes) {
-    for (const attr of Object.keys(attributes)) {
-      node.setAttribute(attr, attributes[attr])
-    }
-  }
+    hNode.onChanges.push(() => {
+      // when there are changes to the `State`
+      // get the parentElement and use .replaceChild(new, old) to get the new value
+      const newNode = render(hNode.value)
+      console.log(newNode)
 
-  if (parent !== null) {
-    for (const childNode of childrenNodes) {
-      node.appendChild(childNode)  
-    }
+      node.parentElement.replaceChild(newNode, node)
 
-    parent.appendChild(node)
+      node = newNode
+    })
+
+    return node
   }
   else {
+    // `h` object
+    const { nodeName, key, children = [], attributes = {} } = hNode
+
+    const node = document.createElement(nodeName)
+    const childrenNodes = []
+    for (const child of children) {
+      const childNode = render(child)
+
+      if (childNode) {
+        node.appendChild(childNode)
+      }
+    }
+
+    for (const attr in attributes) {
+      const value = attributes[attr]
+
+      if (typeof value === 'function') {
+        console.log(value)
+        node.addEventListener(attr.startsWith('on')
+          ? attr.replace('on', '')
+          : attr, value)
+      }
+      else {
+        node.setAttribute(attr, value)
+      }
+    }
+
     return node
   }
 }
