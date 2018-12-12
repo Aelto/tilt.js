@@ -1,3 +1,5 @@
+export const html = htm.bind(h)
+
 class State {
   constructor (v) {
     this.value = v
@@ -22,35 +24,26 @@ export function useState (value) {
 
 export function render(hNode) {
   if (typeof hNode === 'string' || typeof hNode === 'number') {
-    if (String(hNode).trim().length) {
-      return document.createTextNode(hNode)
-    }
-    else {
-      return undefined
-    }
+    const text = String(hNode).trim()
+
+    return document.createTextNode(text)
   }
   else if (hNode instanceof State) {
     let node = render(hNode.value)
 
     hNode.onChanges.push(() => {
-      // when there are changes to the `State`
-      // get the parentElement and use .replaceChild(new, old) to get the new value
       const newNode = render(hNode.value)
-      console.log(newNode)
 
       node.parentElement.replaceChild(newNode, node)
-
       node = newNode
     })
 
     return node
   }
   else {
-    // `h` object
     const { nodeName, key, children = [], attributes = {} } = hNode
 
     const node = document.createElement(nodeName)
-    const childrenNodes = []
     for (const child of children) {
       const childNode = render(child)
 
@@ -63,7 +56,6 @@ export function render(hNode) {
       const value = attributes[attr]
 
       if (typeof value === 'function') {
-        console.log(value)
         node.addEventListener(attr.startsWith('on')
           ? attr.replace('on', '')
           : attr, value)
@@ -78,7 +70,7 @@ export function render(hNode) {
 }
 
 
-export function h(name, attributes) {
+function h(name, attributes) {
   var rest = []
   var children = []
   var length = arguments.length
@@ -104,4 +96,28 @@ export function h(name, attributes) {
         children: children,
         key: attributes && attributes.key
       }
+}
+
+var t = {},
+    e = document.createElement("template"),
+    r = /(\$_h\[\d+\])/g;function n(t, e) {
+  var n = t.match(r),
+      a = JSON.stringify(t);if (null != n) {
+    if (n[0] === t) return t;a = a.replace(r, '"' + e + "$1" + e + '"').replace(/"[+,]"/g, ""), "," == e && (a = "[" + a + "]");
+  }return a;
+}export default function htm (r) {
+  return (t[r] || (t[r] = function (t) {
+    for (var r = t[0], a = 1; a < t.length;) r += "$_h[" + a + "]" + t[a++];return e.innerHTML = r.replace(/<(?:(\/)\/|(\/?)(\$_h\[\d+\]))/g, "<$1$2c c@=$3").replace(/<([\w:-]+)(?:\s[^<>]*?)?(\/?)>/g, function (t, e, r) {
+      return t.replace(/(?:'.*?'|".*?"|([A-Z]))/g, function (t, e) {
+        return e ? ":::" + e : t;
+      }) + (r ? "</" + e + ">" : "");
+    }).trim(), Function("h", "$_h", "return " + function t(e) {
+      if (1 != e.nodeType) return 3 == e.nodeType && e.data ? n(e.data, ",") : "null";for (var r = "", a = n(e.localName, r), i = "", u = ",({", c = 0; c < e.attributes.length; c++) {
+        var l = e.attributes[c].name,
+            o = e.attributes[c].value;"c@" == l ? a = o : "..." == l.substring(0, 3) ? (i = "", u = ",Object.assign({", r += "}," + l.substring(3) + ",{") : (r += i + '"' + l.replace(/:::(\w)/g, function (t, e) {
+          return e.toUpperCase();
+        }) + '":' + (!o || n(o, "+")), i = ",");
+      }r = "h(" + a + u + r + "})";for (var f = e.firstChild; f;) r += "," + t(f), f = f.nextSibling;return r + ")";
+    }((e.content || e).firstChild));
+  }(r)))(this, arguments);
 }

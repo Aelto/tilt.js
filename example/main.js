@@ -1,13 +1,11 @@
-import { useState, h, render } from '/src/tilt.js'
-import htm from '/htm.js'
+import { useState, html, render } from '/src/tilt.js'
 
-const html = htm.bind(h)
-
-function App () {
+function Counter (props) {
   const [count, setCount] = useState(0)
-
+  
   return html`
-    <div id=app>
+    <div class=counter>
+      <h2>${props.title}</h2>
       <button onclick=${e => setCount(count.value + 1)}>➕</button>
       <button onclick=${e => setCount(count.value - 1)}>➖</button>
 
@@ -17,4 +15,16 @@ function App () {
   `
 }
 
-document.body.appendChild(render(App()))
+function App () {
+  const [title, setTitle] = useState('Hello, world!')
+
+  return html`
+    <div id=app>
+      <input oninput=${e => setTitle(e.target.value)} value=${title.value} >
+      <${Counter} title=${title} />
+      <${Counter} title=${title} />
+    </div>
+  `
+}
+
+document.body.appendChild(render(html`<${App} />`))
