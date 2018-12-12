@@ -69,7 +69,11 @@ export function render(hNode) {
   }
 }
 
-
+/**
+ * internal Preact `h` function
+ * @param {*} name 
+ * @param {*} attributes 
+ */
 function h(name, attributes) {
   var rest = []
   var children = []

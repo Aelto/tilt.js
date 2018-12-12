@@ -22,7 +22,6 @@ function App () {
     <div id=app>
       <input oninput=${e => setTitle(e.target.value)} value=${title.value} >
       <${Counter} title=${title} />
-      <${Counter} title=${title} />
     </div>
   `
 }
