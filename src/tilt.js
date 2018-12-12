@@ -5,6 +5,7 @@ class State {
     this.value = v
 
     this.onChanges = []
+    this.maps = []
   }
 
   setValue (v) {
@@ -13,6 +14,48 @@ class State {
     for (const onChange of this.onChanges) {
       onChange()
     }
+  }
+
+  map (fn) {
+    let nodes = []
+
+    if (this.value.length > 0) {
+      this.value.map(el => {
+        const node = fn(el)
+
+        return render(node)
+      })
+    }
+    else {
+      const hNode = html`<div style="display: none"></div>`
+
+      const tempNode = render(hNode)
+      nodes.push(tempNode)
+    }
+
+    const onchange = () => {
+      const firstNode = nodes[0]
+
+      const newNodes = this.value.map(el => {
+        const node = fn(el)
+
+        return render(node)
+      })
+
+      for (const newNode of newNodes) {
+        firstNode.insertAdjacentElement('beforebegin', newNode)
+      }
+
+      for (const oldNode of nodes) {
+        oldNode.parentElement.removeChild(oldNode)
+      }
+
+      nodes = newNodes
+    }
+
+    this.onChanges.push(onchange)
+
+    return nodes
   }
 }
 
@@ -23,7 +66,10 @@ export function useState (value) {
 }
 
 export function render(hNode) {
-  if (typeof hNode === 'string' || typeof hNode === 'number') {
+  if (hNode instanceof Node) {
+    return hNode
+  }
+  else if (typeof hNode === 'string' || typeof hNode === 'number') {
     const text = String(hNode).trim()
 
     return document.createTextNode(text)
@@ -35,6 +81,7 @@ export function render(hNode) {
       const newNode = render(hNode.value)
 
       node.parentElement.replaceChild(newNode, node)
+      
       node = newNode
     })
 
