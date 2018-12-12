@@ -1,71 +1,49 @@
 # tilt.js
-a small and **simple** javascript library for building user interfaces
+a small and **simple** javascript library for building user interfaces. Highly depends on [htm](https://github.com/developit/htm)
 
 ## Example
-index.html
-```html
+A counter with an editable tilte:
+```js
+import { useState, html, render } from '/src/tilt.js'
 
-<div class='test'>
+function Counter (props) {
+  const [count, setCount] = useState(0)
+  
+  return html`
+    <div class=counter>
+      <h2>${props.title}</h2>
+      <button onclick=${e => setCount(count.value + 1)}>➕</button>
+      <button onclick=${e => setCount(count.value - 1)}>➖</button>
 
-	<div class="container" var='container' t-type='container'>
-
-		<template id='todo' tilt='deleteTodo'>{{ content }}</template>
-
-	</div>
-
-	<input type="text" var='input'>
-	<button var='button'>add °{{ n }} </button>
-
-</div>
-
-```
-
-main.js
-```javascript
-
-const state = {n: 1}
-
-const virtual = tilt.handle('.test')
-
-
-const updateDom = ( inc ) => {
-    state.n += inc
-    virtual.render(state)
+      <p>${count}</p>
+      <p>${count}</p>
+    </div>
+  `
 }
 
-virtual.nodes.button.dom.addEventListener('click', e => {
+function App () {
+  const [title, setTitle] = useState('Hello, world!')
 
-    if (virtual.nodes.input.dom.value === '') return
+  return html`
+    <div id=app>
+      <input oninput=${e => setTitle(e.target.value)} value=${title.value} >
+      <${Counter} title=${title} />
+    </div>
+  `
+}
 
-    const newTodo = tilt.handle('#todo')
-                    .appendAt(virtual.nodes.container.dom)
-                    .render({content: virtual.nodes.input.dom.value})
-                    .on('click', e => newTodo.triggers('deleteTodo'))
-
-    virtual.nodes.container.addChild( newTodo )
-
-    virtual.nodes.input.dom.value = ''
-    virtual.nodes.input.dom.focus()
-
-    updateDom( 1 )
-
-})
-
-// the tilt event could have been replaced by a simple function here
-// it's just to show how it works
-tilt.on('deleteTodo', ( node, dom ) => {
-    node.deconstruct()
-    updateDom( -1 )
-})
-
-virtual.render(state)
+document.body.appendChild(render(html`<${App} />`))
 ```
 
+### running the example server
+go into the `/example` directory then run `node sever.js`. It will serve the files on `localhost:3000`
+
+
 ## Documentation
+It almost works the same way react hooks work, except for one point: getting the hook's value outside of the markup is different. It is accessible through an attribute: `value`
 
-### tilt.handle
-*parameters:* `( string css_selector, object holder_object )`
-
-It is the main function of tilt.js. It return a tilt.container object based on html nodes.
-
-todo...
+an example when increasing a counter:
+```jsx
+// see: count.value + 1
+<button onclick=${e => setCount(count.value + 1)}>➕</button>
+```
