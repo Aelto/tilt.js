@@ -23,11 +23,15 @@ function Counter (props) {
 
 function App () {
   const [title, setTitle] = useState('Hello, world!')
+  const [list, setList] = useState([1, 2, 3])
 
   return html`
     <div id=app>
       <input oninput=${e => setTitle(e.target.value)} value=${title.value} >
       <${Counter} title=${title} />
+      
+      // list rendering using `.map`
+      ${list.map(i => html`<p>${i}</p>`)}
     </div>
   `
 }
