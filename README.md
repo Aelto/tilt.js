@@ -30,7 +30,7 @@ function App () {
       <input oninput=${e => setTitle(e.target.value)} value=${title.value} >
       <${Counter} title=${title} />
       
-      // list rendering using `.map`
+      <!-- list rendering using `.map` -->
       ${list.map(i => html`<p>${i}</p>`)}
     </div>
   `
