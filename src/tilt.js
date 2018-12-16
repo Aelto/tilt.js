@@ -1,281 +1,199 @@
 
-let root;
+let app;
 let currentLayer;
 
-export function useState (defaultValue) {
-  const layer = currentLayer;
-  const stateUniqueToken = layer.id;
-
-  if (!layer.contexts.has(stateUniqueToken)) {
-    layer.contexts.set(stateUniqueToken, {
-      value: defaultValue
-    });
-  }
-
-  const currentContext = layer.contexts.get(stateUniqueToken);
-  const setter = updatedValue => {
-    currentContext.value = updatedValue;
-    currentLayer = layer;
-    const result = layer.component.fn(layer.component.attributes);
-    const newLayer = render(result)
-    applyChanges(layer, newLayer);
-  };
-
-  return [currentContext.value, setter];
-};
-
-export function render (hnode, rootNode) {
-  const layer = createLayer();
-  
-  if (!root) {
-    root = layer;
-  }
-
-  if (typeof hnode === 'string' || typeof hnode === 'number') {
-    layer.hnode = hnode;
-  }
-
-  if (hnode.$$typeof === Symbol.for('hnode')) {
-    layer.hnode = hnode;
-
-    layer.hnode.children = layer.hnode.children
-      .map(child => render(child));
-  }
-
-  if (hnode.$$typeof === Symbol.for('component')) {
-    layer.component = hnode;
-
-    currentLayer = layer;
-    const result = layer.component.fn(layer.component.attributes);
-    layer.hnode = result;
-
-    layer.hnode.children = layer.hnode.children
-      .map(child => render(child));
-  }
-
-  if (rootNode) {
-    rootNode.appendChild(buildLayer(layer));
-  }
-
-  return layer;
-};
-
-function createLayer () {
-  const layer = {
-    contexts: new Map(),
-    id: Symbol('layer'),
-    events: new Map()
-  };
-
-  return layer;
-}
-
-
-
-
-function buildLayer (layer) {
-  const { hnode } = layer;
-  const { nodeName, attributes, children } = hnode;
-
-  if (typeof hnode === 'string' || typeof hnode === 'number') {
-    const node = document.createTextNode(hnode);
-    layer.node = node;
-    
-    return node;
-  }
-
-  const node = document.createElement(nodeName);
-
-  for (const attrName in attributes) {
-    const attrValue = attributes[attrName];
-
-    if (typeof attrValue === 'function') {
-      const event = attrName.startsWith('on')
-        ? attrName.replace('on', '')
-        : attrName;
-
-      node[attrName] = e => {
-        if (layer.events[e.type]) {
-          for (const evt of layer.events[e.type]) {
-            evt(e);
-          }
-        }
-      };
-
-      if (!layer.events[event]) {
-        layer.events[event] = [];
-      }
-
-      layer.events[event].push(attrValue);
+class Layer {
+  constructor(hnode) {
+    if (hnode.$$typeof === Symbol.for('component')) {
+      this.component = hnode;
     }
     else {
-      node.setAttribute(attrName, attrValue);
-    }
-  }
-
-  for (const childLayer of children) {
-    if (childLayer.hnode.trim && !childLayer.hnode.trim().length) {
-      continue;
+      this.hnode = hnode;
     }
 
-    node.appendChild(buildLayer(childLayer));
+    this.events = new Map();
   }
 
-  layer.node = node;
+  /**
+   * initialize layers recursively,
+   * 1. create the id and context,
+   * 2. create the node Element,
+   */
+  firstRender() {
+    /**
+     * `Symbol` ensures this.id is unique
+     */
+    this.id = Symbol('layer');
 
-  return node;
-}
+    /**
+     * Layer.context is a map whose key is a unique key
+     * generated and kept in memory by a closure when
+     * calling useState() using this as a currentLayer,
+     * the value is simply the stored value and can be anything
+     */
+    this.context = new Map();
 
+    /**
+     * keeps the order in which the pairs in context were added
+     */
+    this.contextOrder = [];
 
+    /**
+     * 
+     */
+    this.contextIndex = -1;
 
-function applyChanges(previousLayer, nextLayer) {
-  const root = previousLayer.node;
-
-  if (typeof nextLayer.hnode === 'string' || typeof nextLayer.hnode === 'number') {
-    if (nextLayer.hnode.trim && !nextLayer.hnode.trim().length) {
-      return;
+    if (this.component) {
+      this.hnode = this.runComponent();
     }
+    
+    this.node = this._nodeFromHnode(this.hnode);
 
-    const node = buildLayer(nextLayer);
-    previousLayer.node.parentElement.replaceChild(node, previousLayer.node);
-    previousLayer.node = node;
+    if (this.hnode.$$typeof === Symbol.for('hnode')) {
+      this.children = this.hnode.children.map(hnode => new Layer(hnode));
 
-    return;
-  }
-
-  if (previousLayer.hnode.nodeName === nextLayer.hnode.nodeName) {
-    previousLayer.events = {};
-
-    for (const attrName in previousLayer.hnode.attributes) {
-      const attrValue = previousLayer.hnode.attributes[attrName];
-      const nextLayerAttrValue = nextLayer.hnode.attributes[attrName];
-
-      if (!nextLayerAttrValue) {
-        // this attribute was not found in the newLayer
-        // we remove it from the node
-        if (typeof attrValue === 'function') {
-        
-        }
-        else {
-          root.removeAttribute(attrName);
-        }
+      for (const child of this.children) {
+        child.firstRender();
+        child.appendToDom(this.node);
       }
-      else if (attrValue !== nextLayerAttrValue) {
-        // attribute found on both layers, edit values
-        if (typeof attrValue === 'function') {
-          const event = attrName.startsWith('on')
-            ? attrName.replace('on', '')
-            : attrName;
+    }
+  }
 
-          if (!previousLayer.events[event]) {
-            previousLayer.events[event] = [];
+  runComponent() {
+    this.prepareState();
+
+    const result = this.component.fn(this.component.attributes);
+    return result;
+  }
+
+  prepareState() {
+    currentLayer = this;
+
+    this.contextIndex = -1;
+  }
+
+  getOrCreateContext() {
+    const nextIndex = ++this.contextIndex;
+    const contextKey = this.contextOrder[nextIndex];
+
+    if (!contextKey) {
+      const stateUniqueId = Symbol('state.id');
+      
+      this.context.set(stateUniqueId, undefined);
+      this.contextOrder.push(stateUniqueId);
+
+      return stateUniqueId;
+    }
+    
+    return contextKey;
+  }
+
+  getUpdatedOrDefaultContextValue(contextKey, defaultValue) {
+    if (!this.context.has(contextKey)) {
+      throw new Error('trying to get value from unknown context')
+    }
+
+    const contextValue = this.context.get(contextKey);
+
+    if (contextValue === undefined) {
+      this.context.set(contextKey, defaultValue);
+
+      return defaultValue;
+    }
+
+    return contextValue;
+  }
+
+  appendToDom(node) {
+    if (!this.node) {
+      throw new Error('attempting to append `null` node to dom. May need to `.firstRender()` first');
+    }
+
+    node.appendChild(this.node);
+  }
+
+  applyChanges(hnode) {
+    debugger;
+  }
+
+  /**
+   * create a Node Element from the supplied hnode
+   * @param {*} hnode Object returning from the `h` function
+   */
+  _nodeFromHnode(hnode) {
+    if (typeof hnode === 'number' || typeof hnode === 'string') {
+      return document.createTextNode(hnode);
+    }
+
+    const { nodeName, attributes } = hnode;
+    const node = document.createElement(nodeName);
+
+    for (const attrName in attributes) {
+      const attrValue = attributes[attrName];
+
+      if (typeof attrValue === 'function') {
+        const event = attrName.startsWith('on')
+          ? attrName.replace('on', '')
+          : attrName;
+
+        node[attrName] = e => {
+          if (this.events.has(e.type)) {
+            for (const evt of this.events.get(e.type)) {
+              evt(e);
+            }
           }
+        };
 
-          previousLayer.events[event].push(nextLayerAttrValue);
+        if (!this.events.has(event)) {
+          this.events.set(event, []);
         }
-        else {
-          root.setAttribute(attrName, nextLayerAttrValue);
-        }
+
+        this.events.get(event).push(attrValue);
+      }
+      else {
+        node.setAttribute(attrName, attrValue);
       }
     }
 
-    for (let i = 0; i < previousLayer.hnode.children.length; i++) {
-      const previousChildLayer = previousLayer.hnode.children[i];
-      const nextChildLayer = nextLayer.hnode.children[i];
-
-      if (previousChildLayer && nextChildLayer) {
-        applyChanges(previousChildLayer, nextChildLayer);
-      }
-
-      if (!previousChildLayer && nextChildLayer) {
-        const newNode = buildLayer(nextLayer);
-
-        previousChildLayer.hnode.push(nextLayer);
-        root.appendChild(newNode);
-      }
-
-      if (previousChildLayer && !nextChildLayer) {
-        const index = previous.hnode.children.indexOf(previousChildLayer);
-
-        previous.hnode.children.splice(index, 1);
-      }
-    }
-  }
-  else {
-    const newNode = buildLayer(nextLayer)
+    return node;
   }
 }
 
+export function useState(defaultValue) {
+  /**
+   * keep a copy of the currentLayer at the time useState was first used
+   */
+  const layer = currentLayer;
 
+  /**
+   * get a unique id for this state
+   */
+  const stateUniqueId = layer.getOrCreateContext();
+  const value = layer.getUpdatedOrDefaultContextValue(stateUniqueId, defaultValue);
 
-
-
-
-function setUpdates(tree, next) {
-
-}
-
-function diff(next, previous) {
-  if (typeof next.hnode === 'string' || typeof next.hnode === 'number') {
-    return next.hnode === previous
-      ? null
-      : next.hnode;
-  }
-
-  nextHnode = next.hnode;
-  previousHnode = previous.hnode || {
-    attributes: {},
-    children: [],
-    nodeName: null
+  console.log(value);
+  
+  const setter = updatedValue => {
+    layer.context.set(stateUniqueId, updatedValue);
+    
+    const updatedHnode = layer.runComponent();
+    layer.applyChanges(updatedHnode);
   };
 
-  const changes = {
-    attributes: {},
-    removedAttributes: [],
-    children: [],
-    nodeName: null
-  };
-
-  if (next.nodeName !== previous.nodeName) {
-    changes.nodeName = next.nodeName; // usually means a full re-render
-    changes.attributes = next.attributes
-    changes.children = next.children
-  }
-
-  for (const key in next.attributes) {
-    if (next.attributes[key] !== previous.attributes[key]) {
-      changes.attributes[key] = next.attributes[key];
-    }
-  }
-
-  for (const key in previous.attributes) {
-    if (!next.attributes[key]) {
-      changes.removedAttributes.push(key);
-    }
-  }
-
-  for (let i = 0; i < next.children.length; i++) {
-    const nextCurrent = next.children[i];
-    const previousCurrent = previous.children[i] || {
-      attributes: {},
-      children: [],
-      nodeName: null
-    };
-
-    changes.children.push(diff(nextCurrent, previousCurrent));
-  }
-
-  return changes
+  return [value, setter];
 }
 
+/**
+ * tilt app entry point
+ */
+export function render(hnode, domRoot) {
+  app = new Layer(hnode);
 
+  app.firstRender();
+  app.appendToDom(domRoot);
 
-
-
-
-
-
-
+  return app;
+}
 
 function h(name, attributes) {
   var rest = []

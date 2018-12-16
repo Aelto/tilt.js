@@ -7,10 +7,7 @@ function Counter (props) {
     <div class=counter>
       <h2>${props.title}</h2>
       <button onclick=${e => setCount(count + 1)}>➕</button>
-      <button onclick=${e => {
-        console.log('!')
-        setCount(count - 1)
-      }}>➖</button>
+      <button onclick=${e => setCount(count - 1)}>➖</button>
 
       <p>${count}</p>
     </div>
@@ -29,4 +26,4 @@ function App () {
 }
 
 const v = render(html`<${App} />`, document.body)
-console.log(v)
+window.v = v
