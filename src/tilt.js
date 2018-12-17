@@ -113,7 +113,35 @@ class Layer {
   }
 
   applyChanges(hnode) {
-    debugger;
+    if (typeof this.hnode === 'string' || typeof this.hnode === 'number') {
+      const newTextNode = this._nodeFromHnode(hnode);
+
+      this.node.parentElement.replaceChild(newTextNode, this.node);
+      this.node = newTextNode;
+      this.hnode = hnode;
+
+      return;
+    }
+
+    if (hnode.$$typeof === Symbol.for('component')) {
+      const res = hnode.fn(hnode.attributes);
+      this.applyChanges(res);
+    }
+
+    if (this.hnode.nodeName === hnode.nodeName) {
+      this._setNodeAttributes(this.node, hnode.attributes);
+    }
+
+    // TODO: handle list rendering
+
+    if (this.children.length === hnode.children.length) {
+      for (let i = 0; i < this.children.length; i++) {
+        const child = hnode.children[i];
+
+        this.children[i].applyChanges(child);
+      }
+    }
+
   }
 
   /**
@@ -127,6 +155,24 @@ class Layer {
 
     const { nodeName, attributes } = hnode;
     const node = document.createElement(nodeName);
+
+    this._setNodeAttributes(node, attributes);
+
+    return node;
+  }
+
+  /**
+   * set the node the supplied attributes,
+   * if an attribute is a function:
+   *  - add a custom event which will, once triggered, call 
+   *    all the events stored in `this.events`
+   * 
+   * **NOTE**: this methods clear all the stored events
+   * @param {*} node 
+   * @param {*} attributesMap 
+   */
+  _setNodeAttributes(node, attributes) {
+    this.events.clear();
 
     for (const attrName in attributes) {
       const attrValue = attributes[attrName];
@@ -154,8 +200,6 @@ class Layer {
         node.setAttribute(attrName, attrValue);
       }
     }
-
-    return node;
   }
 }
 
@@ -171,8 +215,6 @@ export function useState(defaultValue) {
   const stateUniqueId = layer.getOrCreateContext();
   const value = layer.getUpdatedOrDefaultContextValue(stateUniqueId, defaultValue);
 
-  console.log(value);
-  
   const setter = updatedValue => {
     layer.context.set(stateUniqueId, updatedValue);
     
