@@ -132,8 +132,6 @@ class Layer {
       this._setNodeAttributes(this.node, hnode.attributes);
     }
 
-    // TODO: handle list rendering
-
     if (this.children.length === hnode.children.length) {
       for (let i = 0; i < this.children.length; i++) {
         const child = hnode.children[i];
@@ -141,7 +139,115 @@ class Layer {
         this.children[i].applyChanges(child);
       }
     }
+    else if (this.children.length < hnode.children.length) {
+      // a new element was added to the children
 
+      let index = 0;
+      while (index < this.children.length) {
+        const thisChild = this.children[index];
+        const hnodeChild = hnode.children[index];
+
+        if (!thisChild._compareHnode(hnodeChild)) {
+          break;
+        }
+
+        index += 1;
+      }
+
+      for (index; index < hnode.children.length; index++) {
+        const hnodeChild = hnode.children[index];
+
+        this.hnode.children.push(hnodeChild);
+
+        const newLayer = new Layer(hnodeChild);
+        newLayer.firstRender();
+        newLayer.appendToDom(this.node);
+
+        this.children.push(newLayer);
+      }
+    }
+    else if (this.children.length > hnode.children.length) {
+      let index = 0;
+      while (index < this.children.length) {
+        const thisChild = this.children[index];
+        const hnodeChild = hnode.children[index];
+
+        if (!thisChild._compareHnode(hnodeChild)) {
+          break;
+        }
+
+        index += 1;
+      }
+
+      
+    }
+
+  }
+
+  _compareHnode(hnode) {
+    if (hnode.$$typeof === Symbol.for('component')) {
+      if (!this.component) {
+        return false;
+      }
+
+      if (hnode.fn.name !== this.component.fn.name) {
+        return false;
+      }
+
+      for (const key in hnode.attributes) {
+        if (hnode.attributes[key] !== this.component.attributes[key]) {
+          return false;
+        }
+      }
+
+      for (const key in this.component.attributes) {
+        if (hnode.attributes[key] !== this.component.attributes[key]) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    if (typeof this.hnode !== typeof hnode) {
+      return false;
+    }
+
+    if (typeof this.hnode === 'string' || typeof this.hnode === 'number') {
+      return this.hnode === hnode;
+    }
+
+    if (this.hnode.nodeName !== hnode.nodeName) {
+      return false;
+    }
+
+    const thisAttrKeys = Object.keys(this.hnode.attributes);
+    const hnodeAttrKeys = Object.keys(hnode.attributes);
+
+    if (thisAttrKeys.length !== hnodeAttrKeys.length) {
+      return false;
+    }
+
+    for (const key of thisAttrKeys) {
+      if (this.hnode.attributes[key] !== hnode.attributes[key]) {
+        return false;
+      }
+    }
+
+    if (this.children.length !== hnode.children.length) {
+      return false;
+    }
+
+    for (let i = 0; i < this.children.length; i++) {
+      const thisChild = this.children[i];
+      const hnodeChild = hnode.children[i];
+
+      if (!thisChild._compareHnode(hnodeChild)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
@@ -251,6 +357,10 @@ function h(name, attributes) {
         rest.push(node[length])
       }
     } else if (node != null && node !== true && node !== false) {
+      if (node.trim && !node.trim().length) {
+        continue;
+      }
+      console.log(node)
       children.push(node)
     }
   }

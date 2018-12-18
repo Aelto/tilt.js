@@ -16,14 +16,28 @@ function Counter (props) {
 
 function App () {
   const [title, setTitle] = useState('Hello, world!')
+  const [counters, setCounters] = useState([])
+  
+  const addCounter = () => {
+    setCounters([...counters, html`<${Counter} />`])
+  };
+
+  const removeCounter = () => {
+    setCounters(counters.slice(0, counters.length - 1));
+  };
 
   return html`
     <div id=app>
       <input oninput=${e => setTitle(e.target.value)} value=${title} >
-      <${Counter} title=${title} />
+      <button onclick=${e => addCounter()}>➕</button>
+      <span>${counters.length}</span>
+      <button onclick=${e => removeCounter()}>➖</button>
+
+      <div>
+        ${counters}
+      </div>
     </div>
   `
 }
 
 const v = render(html`<${App} />`, document.body)
-window.v = v
