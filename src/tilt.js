@@ -112,31 +112,75 @@ class Layer {
     node.appendChild(this.node);
   }
 
+  removeFromDom() {
+    if (!this.node) {
+      throw new Error('attempting to remove this node from the dom, but this.node is null');
+    }
+
+    this.node.parentElement.removeChild(this.node);
+  }
+
+  /**
+   * make changes according to the supplied hnode
+   * @param {*} hnode 
+   * @returns {bool} returns true if changes were made, false otherwise
+   */
   applyChanges(hnode) {
+    let didUpdates = false;
+
     if (typeof this.hnode === 'string' || typeof this.hnode === 'number') {
-      const newTextNode = this._nodeFromHnode(hnode);
+      if (this.hnode === hnode) {
+        return false;
+      }
+      else {
+        const newTextNode = this._nodeFromHnode(hnode);
 
-      this.node.parentElement.replaceChild(newTextNode, this.node);
-      this.node = newTextNode;
-      this.hnode = hnode;
+        this.node.parentElement.replaceChild(newTextNode, this.node);
+        this.node = newTextNode;
+        this.hnode = hnode;
 
-      return;
+        return true;
+      }
     }
 
     if (hnode.$$typeof === Symbol.for('component')) {
       const res = hnode.fn(hnode.attributes);
-      this.applyChanges(res);
+      return this.applyChanges(res);
     }
 
     if (this.hnode.nodeName === hnode.nodeName) {
-      this._setNodeAttributes(this.node, hnode.attributes);
+      let shouldUpdateAttributes = false;
+
+      const thisAttrNames = Object.keys(this.hnode.attributes);
+      const hnodeAttrNames = Object.keys(hnode.attributes);
+
+      if (thisAttrNames.length !== hnodeAttrNames) {
+        shouldUpdateAttributes = true;
+      }
+
+      for (const key of thisAttrNames) {
+        if (this.hnode.attributes[key] !== hnode.attributes[key]) {
+          shouldUpdateAttributes = true;
+          didUpdates = true;
+          break;
+        }
+
+        if (typeof hnode.attributes[key] === 'function') {
+          shouldUpdateAttributes = true;
+          break;
+        }
+      }
+
+      if (shouldUpdateAttributes) {
+        this._setNodeAttributes(this.node, hnode.attributes);
+      }
     }
 
     if (this.children.length === hnode.children.length) {
       for (let i = 0; i < this.children.length; i++) {
         const child = hnode.children[i];
 
-        this.children[i].applyChanges(child);
+        didUpdates = this.children[i].applyChanges(child) || didUpdates;
       }
     }
     else if (this.children.length < hnode.children.length) {
@@ -147,7 +191,7 @@ class Layer {
         const thisChild = this.children[index];
         const hnodeChild = hnode.children[index];
 
-        if (!thisChild._compareHnode(hnodeChild)) {
+        if (!thisChild.applyChanges(hnodeChild)) {
           break;
         }
 
@@ -167,21 +211,39 @@ class Layer {
       }
     }
     else if (this.children.length > hnode.children.length) {
-      let index = 0;
-      while (index < this.children.length) {
+      console.log(hnode.children.length, this.children.length);
+      if (!hnode.children.length) {
+        for (const layer of this.children) {
+          layer.removeFromDom();
+        }
+
+        this.children = [];
+
+        return true;
+      }
+      
+      for (let index = 0; index < hnode.children.length; index++) {
         const thisChild = this.children[index];
         const hnodeChild = hnode.children[index];
 
-        if (!thisChild._compareHnode(hnodeChild)) {
-          break;
-        }
+        thisChild.applyChanges(hnodeChild);
+      }
 
-        index += 1;
+      console.log(hnode.children.length, this.children.length)
+      for (let index = hnode.children.length; index < this.children.length; index++) {
+        console.log(index);
+        const layer = this.children[index];
+
+        layer.removeFromDom();
       }
 
       
+
+      this.children = this.children.slice(0, hnode.children.length);
+      console.log(this.children);
     }
 
+    return didUpdates;
   }
 
   _compareHnode(hnode) {
@@ -360,7 +422,7 @@ function h(name, attributes) {
       if (node.trim && !node.trim().length) {
         continue;
       }
-      console.log(node)
+      
       children.push(node)
     }
   }

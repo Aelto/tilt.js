@@ -17,9 +17,10 @@ function Counter (props) {
 function App () {
   const [title, setTitle] = useState('Hello, world!')
   const [counters, setCounters] = useState([])
+  const [showTitle, setShowTitle] = useState(true);
   
   const addCounter = () => {
-    setCounters([...counters, html`<${Counter} />`])
+    setCounters([...counters, html`<${Counter} title=${title} />`])
   };
 
   const removeCounter = () => {
