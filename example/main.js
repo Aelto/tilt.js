@@ -11,7 +11,7 @@ function Counter (props) {
           : null
       } 
       <button onclick=${e => setCount(count + 1)}>➕</button>
-      <span>${count}</span>
+      <span>count: ${count}</span>
       <button onclick=${e => setCount(count - 1)}>➖</button>
     </p>
   `;

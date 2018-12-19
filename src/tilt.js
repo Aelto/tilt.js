@@ -381,12 +381,18 @@ class Layer {
         this.events.get(event).push(attrValue);
       }
       else {
+        if (node[attrName]) {
+          node[attrName] = attrValue;
+        }
+
         node.setAttribute(attrName, attrValue);
       }
     }
   }
 }
 
+let setStateQueue = new Set();
+let applyChangesAnimationId = null;
 export function useState(defaultValue) {
   /**
    * keep a copy of the currentLayer at the time useState was first used
@@ -401,9 +407,21 @@ export function useState(defaultValue) {
 
   const setter = updatedValue => {
     layer.context.set(stateUniqueId, updatedValue);
-    
-    const updatedHnode = layer.runComponent();
-    layer.applyChanges(updatedHnode, stateUniqueId);
+
+    if (applyChangesAnimationId !== null) {
+      cancelAnimationFrame(applyChangesAnimationId);
+    }
+
+    setStateQueue.add(layer);
+    applyChangesAnimationId = requestAnimationFrame(() => {
+      for (const layer of setStateQueue) {
+        const updatedHnode = layer.runComponent();
+        layer.applyChanges(updatedHnode);
+      }
+
+      setStateQueue = new Set();
+      applyChangesAnimationId = null;
+    });
   };
 
   return [value, setter];
