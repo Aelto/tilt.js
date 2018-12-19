@@ -125,7 +125,7 @@ class Layer {
    * @param {*} hnode 
    * @returns {bool} returns true if changes were made, false otherwise
    */
-  applyChanges(hnode) {
+  applyChanges(hnode, uniqueId) {
     let didUpdates = false;
 
     if (typeof this.hnode === 'string' || typeof this.hnode === 'number') {
@@ -144,7 +144,9 @@ class Layer {
     }
 
     if (hnode.$$typeof === Symbol.for('component')) {
+      this.prepareState();
       const res = hnode.fn(hnode.attributes);
+      
       return this.applyChanges(res);
     }
 
@@ -174,6 +176,24 @@ class Layer {
       if (shouldUpdateAttributes) {
         this._setNodeAttributes(this.node, hnode.attributes);
       }
+    }
+    else {
+      const newNode = this._nodeFromHnode(hnode);
+
+      if (this.hnode.$$typeof === Symbol.for('hnode')) {
+        this.children = hnode.children.map(child => new Layer(child));
+  
+        for (const child of this.children) {
+          child.firstRender();
+          child.appendToDom(newNode);
+        }
+      }
+
+      this.node.parentElement.replaceChild(newNode, this.node);
+      this.node = newNode;
+      this.hnode = hnode;
+
+      return true;
     }
 
     if (this.children.length === hnode.children.length) {
@@ -211,7 +231,6 @@ class Layer {
       }
     }
     else if (this.children.length > hnode.children.length) {
-      console.log(hnode.children.length, this.children.length);
       if (!hnode.children.length) {
         for (const layer of this.children) {
           layer.removeFromDom();
@@ -229,9 +248,7 @@ class Layer {
         thisChild.applyChanges(hnodeChild);
       }
 
-      console.log(hnode.children.length, this.children.length)
       for (let index = hnode.children.length; index < this.children.length; index++) {
-        console.log(index);
         const layer = this.children[index];
 
         layer.removeFromDom();
@@ -240,7 +257,6 @@ class Layer {
       
 
       this.children = this.children.slice(0, hnode.children.length);
-      console.log(this.children);
     }
 
     return didUpdates;
@@ -387,7 +403,7 @@ export function useState(defaultValue) {
     layer.context.set(stateUniqueId, updatedValue);
     
     const updatedHnode = layer.runComponent();
-    layer.applyChanges(updatedHnode);
+    layer.applyChanges(updatedHnode, stateUniqueId);
   };
 
   return [value, setter];

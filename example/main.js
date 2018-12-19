@@ -1,26 +1,34 @@
 import { useState, html, render } from '/src/tilt.js'
 
 function Counter (props) {
-  const [count, setCount] = useState(0)
-  
-  return html`
-    <div class=counter>
-      <h2>${props.title}</h2>
-      <button onclick=${e => setCount(count + 1)}>➕</button>
-      <button onclick=${e => setCount(count - 1)}>➖</button>
+  const [count, setCount] = useState(0);
 
-      <p>${count}</p>
-    </div>
-  `
+  return html`
+    <p class=counter>
+      ${
+        props.showTitle 
+          ? html`<h2>${props.title}</h2>`
+          : null
+      } 
+      <button onclick=${e => setCount(count + 1)}>➕</button>
+      <span>${count}</span>
+      <button onclick=${e => setCount(count - 1)}>➖</button>
+    </p>
+  `;
 }
 
 function App () {
-  const [title, setTitle] = useState('Hello, world!')
+  const [title, setTitle] = useState('');
   const [counters, setCounters] = useState([])
   const [showTitle, setShowTitle] = useState(true);
   
   const addCounter = () => {
-    setCounters([...counters, html`<${Counter} title=${title} />`])
+    if (!title.length) {
+      return;
+    }
+
+    setCounters([...counters, { title }]);
+    setTitle("");
   };
 
   const removeCounter = () => {
@@ -30,15 +38,16 @@ function App () {
   return html`
     <div id=app>
       <input oninput=${e => setTitle(e.target.value)} value=${title} >
-      <button onclick=${e => addCounter()}>➕</button>
+      <button onclick=${e => addCounter()}>create</button>
       <span>${counters.length}</span>
-      <button onclick=${e => removeCounter()}>➖</button>
+      <button onclick=${e => removeCounter()}>remove last</button>
+      <button onclick=${e => setShowTitle(!showTitle)}>toggle title</button>
 
       <div>
-        ${counters}
+        ${counters.map(({ title }) => html`<${Counter} showTitle=${showTitle} title=${title} />`)}
       </div>
     </div>
-  `
+  `;
 }
 
 const v = render(html`<${App} />`, document.body)
