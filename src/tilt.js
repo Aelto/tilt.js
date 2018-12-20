@@ -15,9 +15,10 @@ class Layer {
   }
 
   /**
-   * initialize layers recursively,
+   * initialize nested layers,
    * 1. create the id and context,
    * 2. create the node Element,
+   * 3. call .firstRender() on all children
    */
   firstRender() {
     /**
@@ -38,9 +39,6 @@ class Layer {
      */
     this.contextOrder = [];
 
-    /**
-     * 
-     */
     this.contextIndex = -1;
 
     if (this.component) {
@@ -125,77 +123,20 @@ class Layer {
    * @param {*} hnode 
    * @returns {bool} returns true if changes were made, false otherwise
    */
-  applyChanges(hnode, uniqueId) {
-    let didUpdates = false;
-
+  applyChanges(hnode) {
     if (typeof this.hnode === 'string' || typeof this.hnode === 'number') {
-      if (this.hnode === hnode) {
-        return false;
-      }
-      else {
-        const newTextNode = this._nodeFromHnode(hnode);
-
-        this.node.parentElement.replaceChild(newTextNode, this.node);
-        this.node = newTextNode;
-        this.hnode = hnode;
-
-        return true;
-      }
+      return this._applyChangesText(hnode);
     }
 
     if (hnode.$$typeof === Symbol.for('component')) {
-      this.prepareState();
-      const res = hnode.fn(hnode.attributes);
-      this.component.attributes = hnode.attributes;
-      
-      return this.applyChanges(res);
+      return this._applyChangesComponent(hnode);
     }
 
-    if (this.hnode.nodeName === hnode.nodeName) {
-      let shouldUpdateAttributes = false;
-
-      const thisAttrNames = Object.keys(this.hnode.attributes);
-      const hnodeAttrNames = Object.keys(hnode.attributes);
-
-      if (thisAttrNames.length !== hnodeAttrNames) {
-        shouldUpdateAttributes = true;
-      }
-
-      for (const key of thisAttrNames) {
-        if (this.hnode.attributes[key] !== hnode.attributes[key]) {
-          shouldUpdateAttributes = true;
-          didUpdates = true;
-          break;
-        }
-
-        if (typeof hnode.attributes[key] === 'function') {
-          shouldUpdateAttributes = true;
-          break;
-        }
-      }
-
-      if (shouldUpdateAttributes) {
-        this._setNodeAttributes(this.node, hnode.attributes);
-      }
+    if (this.hnode.nodeName !== hnode.nodeName) {
+      return this._applyChangesDifferentNode(hnode);
     }
-    else {
-      const newNode = this._nodeFromHnode(hnode);
 
-      if (this.hnode.$$typeof === Symbol.for('hnode')) {
-        this.children = hnode.children.map(child => new Layer(child));
-  
-        for (const child of this.children) {
-          child.firstRender();
-          child.appendToDom(newNode);
-        }
-      }
-
-      this.node.parentElement.replaceChild(newNode, this.node);
-      this.node = newNode;
-      this.hnode = hnode;
-
-      return true;
-    }
+    let didUpdates = this._applyChangesSameNode(hnode);
 
     if (this.children.length === hnode.children.length) {
       for (let i = 0; i < this.children.length; i++) {
@@ -204,8 +145,9 @@ class Layer {
         didUpdates = this.children[i].applyChanges(child) || didUpdates;
       }
     }
+    // a new element was added to the children list
     else if (this.children.length < hnode.children.length) {
-      // a new element was added to the children
+      
 
       let index = 0;
       while (index < this.children.length) {
@@ -231,6 +173,7 @@ class Layer {
         this.children.push(newLayer);
       }
     }
+    // elements were removed from the children list
     else if (this.children.length > hnode.children.length) {
       if (!hnode.children.length) {
         for (const layer of this.children) {
@@ -255,78 +198,79 @@ class Layer {
         layer.removeFromDom();
       }
 
-      
-
       this.children = this.children.slice(0, hnode.children.length);
     }
 
     return didUpdates;
   }
 
-  _compareHnode(hnode) {
-    if (hnode.$$typeof === Symbol.for('component')) {
-      if (!this.component) {
-        return false;
+  _applyChangesDifferentNode(hnode) {
+    const newNode = this._nodeFromHnode(hnode);
+    if (this.hnode.$$typeof === Symbol.for('hnode')) {
+      this.children = hnode.children.map(child => new Layer(child));
+      for (const child of this.children) {
+        child.firstRender();
+        child.appendToDom(newNode);
       }
+    }
+    this.node.parentElement.replaceChild(newNode, this.node);
+    this.node = newNode;
+    this.hnode = hnode;
+    return true;
+  }
 
-      if (hnode.fn.name !== this.component.fn.name) {
-        return false;
-      }
+  _applyChangesText(hnode) {
+    if (this.hnode === hnode) {
+      return false;
+    }
+    else {
+      const newTextNode = this._nodeFromHnode(hnode);
 
-      for (const key in hnode.attributes) {
-        if (hnode.attributes[key] !== this.component.attributes[key]) {
-          return false;
-        }
-      }
-
-      for (const key in this.component.attributes) {
-        if (hnode.attributes[key] !== this.component.attributes[key]) {
-          return false;
-        }
-      }
+      this.node.parentElement.replaceChild(newTextNode, this.node);
+      this.node = newTextNode;
+      this.hnode = hnode;
 
       return true;
     }
+  }
 
-    if (typeof this.hnode !== typeof hnode) {
-      return false;
+  _applyChangesComponent(hnode) {
+    this.prepareState();
+    const res = hnode.fn(hnode.attributes);
+    this.component.attributes = hnode.attributes;
+
+    return this.applyChanges(res);
+  }
+
+  _applyChangesSameNode(hnode) {
+    let shouldUpdateAttributes = false;
+    let didUpdates = false;
+
+    const thisAttrNames = Object.keys(this.hnode.attributes);
+    const hnodeAttrNames = Object.keys(hnode.attributes);
+
+    if (thisAttrNames.length !== hnodeAttrNames) {
+      shouldUpdateAttributes = true;
     }
 
-    if (typeof this.hnode === 'string' || typeof this.hnode === 'number') {
-      return this.hnode === hnode;
-    }
-
-    if (this.hnode.nodeName !== hnode.nodeName) {
-      return false;
-    }
-
-    const thisAttrKeys = Object.keys(this.hnode.attributes);
-    const hnodeAttrKeys = Object.keys(hnode.attributes);
-
-    if (thisAttrKeys.length !== hnodeAttrKeys.length) {
-      return false;
-    }
-
-    for (const key of thisAttrKeys) {
+    for (const key of thisAttrNames) {
       if (this.hnode.attributes[key] !== hnode.attributes[key]) {
-        return false;
+        shouldUpdateAttributes = true;
+        didUpdates = true;
+        break;
+      }
+
+      if (typeof hnode.attributes[key] === 'function') {
+        shouldUpdateAttributes = true;
+        break;
       }
     }
 
-    if (this.children.length !== hnode.children.length) {
-      return false;
+    if (shouldUpdateAttributes) {
+      this._setNodeAttributes(this.node, hnode.attributes);
     }
 
-    for (let i = 0; i < this.children.length; i++) {
-      const thisChild = this.children[i];
-      const hnodeChild = hnode.children[i];
-
-      if (!thisChild._compareHnode(hnodeChild)) {
-        return false;
-      }
-    }
-
-    return true;
+    return didUpdates;
   }
 
   /**
@@ -350,9 +294,9 @@ class Layer {
    * set the node the supplied attributes,
    * if an attribute is a function:
    *  - add a custom event which will, once triggered, call 
-   *    all the events stored in `this.events`
+   *    all the events stored in `this.events[evt.type]`
    * 
-   * **NOTE**: this methods clear all the stored events
+   * **NOTE**: this method clears all the stored events
    * @param {*} node 
    * @param {*} attributesMap 
    */
@@ -428,9 +372,6 @@ export function useState(defaultValue) {
   return [value, setter];
 }
 
-/**
- * tilt app entry point
- */
 export function render(hnode, domRoot) {
   app = new Layer(hnode);
 
@@ -508,5 +449,6 @@ function htm(r) {
     }((e.content || e).firstChild));
   }(r)))(this, arguments);
 }
-//#endregion
+
 export const html = htm.bind(h)
+//#endregion
