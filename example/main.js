@@ -1,4 +1,5 @@
 import { useState, html, render } from '/src/tilt.js'
+// const { useState, html, render } = tilt;
 
 function Counter (props) {
   const [count, setCount] = useState(0);
@@ -39,7 +40,7 @@ function App () {
     <div id=app>
       <input oninput=${e => setTitle(e.target.value)} value=${title} >
       <button onclick=${e => addCounter()}>create</button>
-      <span>${counters.length}</span>
+      <span>${counters.length} counters</span>
       <button onclick=${e => removeCounter()}>remove last</button>
       <button onclick=${e => setShowTitle(!showTitle)}>toggle title</button>
 
@@ -50,4 +51,4 @@ function App () {
   `;
 }
 
-const v = render(html`<${App} />`, document.body)
+render(html`<${App} />`, document.body)

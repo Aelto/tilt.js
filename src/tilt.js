@@ -146,6 +146,7 @@ class Layer {
     if (hnode.$$typeof === Symbol.for('component')) {
       this.prepareState();
       const res = hnode.fn(hnode.attributes);
+      this.component.attributes = hnode.attributes;
       
       return this.applyChanges(res);
     }
