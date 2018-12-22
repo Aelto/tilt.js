@@ -1,5 +1,5 @@
 import h from './h';
-import htm from './htm';
+import htm from 'htm';
 
 export { default as render } from './render';
 export { default as useState } from './use-state';
