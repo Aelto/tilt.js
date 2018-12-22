@@ -147,15 +147,16 @@ export default class Layer {
     // a new element was added to the children list
     else if (this.children.length < hnode.children.length) {
       let index = 0;
-      while (index < this.children.length) {
+
+      for (index; index < hnode.children.length; index++) {
         const thisChild = this.children[index];
         const hnodeChild = hnode.children[index];
 
-        if (!thisChild.applyChanges(hnodeChild)) {
+        if (!thisChild || !hnodeChild) {
           break;
         }
 
-        index += 1;
+        thisChild.applyChanges(hnodeChild);
       }
 
       for (index; index < hnode.children.length; index++) {
