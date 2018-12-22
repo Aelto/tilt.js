@@ -1,35 +1,35 @@
-import { useState, html, render } from '/src/tilt.js'
-// const { useState, html, render } = tilt;
+// import { useState, html, render } from '/src/tilt.js'
+const { useState, html, render } = tilt;
 
-function Counter (props) {
+function Counter(props) {
   const [count, setCount] = useState(0);
 
   return html`
-    <p class=counter>
+    <p class="counter">
       ${
-        props.showTitle 
-          ? html`<h2>${props.title}</h2>`
+        props.showTitle
+          ? html`
+              <h2>${props.title}</h2>
+            `
           : null
-      } 
-      <button onclick=${e => setCount(count + 1)}>➕</button>
-      <span>count: ${count}</span>
+      } <button onclick=${e => setCount(count + 1)}>➕</button> <span>count: ${count}</span>
       <button onclick=${e => setCount(count - 1)}>➖</button>
     </p>
   `;
 }
 
-function App () {
+function App() {
   const [title, setTitle] = useState('');
-  const [counters, setCounters] = useState([])
+  const [counters, setCounters] = useState([]);
   const [showTitle, setShowTitle] = useState(true);
-  
+
   const addCounter = () => {
     if (!title.length) {
       return;
     }
 
     setCounters([...counters, { title }]);
-    setTitle("");
+    setTitle('');
   };
 
   const removeCounter = () => {
@@ -37,18 +37,29 @@ function App () {
   };
 
   return html`
-    <div id=app>
-      <input oninput=${e => setTitle(e.target.value)} value=${title} >
-      <button onclick=${e => addCounter()}>create</button>
-      <span>${counters.length} counters</span>
+    <div id="app">
+      <input oninput=${e => setTitle(e.target.value)} value=${title} />
+      <button onclick=${e => addCounter()}>create</button> <span>${counters.length} counters</span>
       <button onclick=${e => removeCounter()}>remove last</button>
       <button onclick=${e => setShowTitle(!showTitle)}>toggle title</button>
 
       <div>
-        ${counters.map(({ title }) => html`<${Counter} showTitle=${showTitle} title=${title} />`)}
+        ${
+          counters.map(
+            ({ title }) =>
+              html`
+                <${Counter} showTitle=${showTitle} title=${title} />
+              `
+          )
+        }
       </div>
     </div>
   `;
 }
 
-render(html`<${App} />`, document.body)
+render(
+  html`
+    <${App} />
+  `,
+  document.body
+);
