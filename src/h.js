@@ -1,30 +1,17 @@
-export default function h(name, attributes) {
-  var rest = [];
-  var children = [];
-  var length = arguments.length;
-
-  while (length-- > 2) rest.push(arguments[length]);
-
-  while (rest.length) {
-    var node = rest.pop();
-    if (node && node.pop) {
-      for (length = node.length; length--; ) {
-        rest.push(node[length]);
-      }
-    } else if (node != null && node !== true && node !== false) {
-      if (node.trim && !node.trim().length) {
-        continue;
-      }
-
-      children.push(node);
-    }
-  }
+export default function h(name, attributes, ...children) {
+  // 1. exclude `null`, `true` and `false`
+  // 2. exclude empty strings
+  // 3. flatten the children array
+  const childrenNodes = children
+    .filter(c => c !== null && c !== true && c !== false) // 1.
+    .filter(c => !c.trim || c.trim().length) // 2.
+    .flatMap(c => c); // 3.
 
   if (typeof name === 'function') {
     return {
       fn: name,
       attributes,
-      children,
+      children: childrenNodes,
       $$typeof: Symbol.for('component')
     };
   }
@@ -32,7 +19,7 @@ export default function h(name, attributes) {
   return {
     nodeName: name,
     attributes: attributes || {},
-    children: children,
+    children: childrenNodes,
     key: attributes && attributes.key,
     $$typeof: Symbol.for('hnode')
   };
