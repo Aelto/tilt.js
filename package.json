@@ -8,7 +8,8 @@
   },
   "scripts": {
     "example": "node example/server.js",
-    "build": "webpack"
+    "build": "webpack",
+    "watch": "webpack --watch"
   },
   "repository": {
     "type": "git",
